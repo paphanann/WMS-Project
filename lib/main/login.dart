@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
-import '../widgets/wms_login_footer.dart';
 import 'home.dart';
+import 'reset_password.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -18,15 +18,21 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
-  bool _rememberUsername = false;
+  bool _rememberPassword = true;
   bool _isLoading = false;
+
+  String _selectedDatabase = 'SBO_PRD_CT';
+  String _selectedWarehouse = '01 - คลังหลัก (Main Warehouse)';
+
+  static const _databases = ['SBO_PRD_CT'];
+  static const _warehouses = ['01 - คลังหลัก (Main Warehouse)'];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       precacheImage(const AssetImage('picture/wms_logo.jpg'), context);
-      precacheImage(const AssetImage('picture/Footer.png'), context);
+      precacheImage(const AssetImage('picture/background.png'), context);
     });
   }
 
@@ -39,7 +45,7 @@ class _LoginPageState extends State<LoginPage> {
 
   String? _validateUsername(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'กรุณากรอกชื่อผู้ใช้';
+      return 'กรุณากรอกรหัสผู้ใช้งาน';
     }
     return null;
   }
@@ -73,9 +79,9 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  InputDecoration _inputDecoration({
-    required String hint,
+  InputDecoration _fieldDecoration({
     required IconData prefixIcon,
+    String? hint,
     Widget? suffixIcon,
   }) {
     return InputDecoration(
@@ -83,7 +89,7 @@ class _LoginPageState extends State<LoginPage> {
       hintStyle: AppTextStyles.hint(),
       filled: true,
       fillColor: Colors.white,
-      prefixIcon: Icon(prefixIcon, color: AppColors.textGray, size: 22),
+      prefixIcon: Icon(prefixIcon, color: AppColors.accentGreen, size: 22),
       suffixIcon: suffixIcon,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       enabledBorder: OutlineInputBorder(
@@ -105,171 +111,292 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  Widget _fieldLabel(String text) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(text, style: AppTextStyles.label()),
+    );
+  }
+
+  Widget _dropdownField<T>({
+    required T value,
+    required List<T> items,
+    required IconData prefixIcon,
+    required ValueChanged<T?> onChanged,
+  }) {
+    return DropdownButtonFormField<T>(
+      key: ValueKey(value),
+      initialValue: value,
+      items: items
+          .map(
+            (item) => DropdownMenuItem(
+              value: item,
+              child: Text(
+                item.toString(),
+                style: AppTextStyles.body(color: AppColors.primaryBlue),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          )
+          .toList(),
+      onChanged: onChanged,
+      isExpanded: true,
+      icon: const Icon(
+        Icons.keyboard_arrow_down_rounded,
+        color: AppColors.primaryBlue,
+      ),
+      decoration: _fieldDecoration(prefixIcon: prefixIcon),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Column(
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          Expanded(
-            child: SafeArea(
-              bottom: false,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 28),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 16),
-                      Image.asset(
-                        'picture/wms_logo.jpg',
-                        width: 220,
-                        cacheWidth: 440,
-                        fit: BoxFit.contain,
+          Image.asset(
+            'picture/background.png',
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            gaplessPlayback: true,
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(24, 12, 24, 16 + bottomInset),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    Image.asset(
+                      'picture/wms_logo.jpg',
+                      width: 200,
+                      cacheWidth: 400,
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'เข้าสู่ระบบ',
+                      style: AppTextStyles.text(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryBlue,
                       ),
-                      const SizedBox(height: 20),
-                      Text('ยินดีต้อนรับ', style: AppTextStyles.title()),
-                      const SizedBox(height: 4),
-                      Text(
-                        'เข้าสู่ระบบเพื่อใช้งาน',
-                        style: AppTextStyles.subtitle(),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'กรุณาเลือกข้อมูลเพื่อเข้าสู่ระบบ',
+                      style: AppTextStyles.subtitle(),
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 24,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 28),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text('ชื่อผู้ใช้', style: AppTextStyles.label()),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _usernameController,
-                        textInputAction: TextInputAction.next,
-                        style: AppTextStyles.body(),
-                        decoration: _inputDecoration(
-                          hint: 'กรอกชื่อผู้ใช้',
-                          prefixIcon: Icons.person_outline,
-                        ),
-                        validator: _validateUsername,
-                      ),
-                      const SizedBox(height: 18),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text('รหัสผ่าน', style: AppTextStyles.label()),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        textInputAction: TextInputAction.done,
-                        onFieldSubmitted: (_) => _handleLogin(),
-                        style: AppTextStyles.body(),
-                        decoration: _inputDecoration(
-                          hint: 'กรอกรหัสผ่าน',
-                          prefixIcon: Icons.lock_outline,
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                              color: AppColors.textGray,
-                              size: 22,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _obscurePassword = !_obscurePassword;
-                              });
+                      child: Column(
+                        children: [
+                          _fieldLabel('เลือกฐานข้อมูล'),
+                          const SizedBox(height: 8),
+                          _dropdownField<String>(
+                            value: _selectedDatabase,
+                            items: _databases,
+                            prefixIcon: Icons.storage_outlined,
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() => _selectedDatabase = value);
+                              }
                             },
                           ),
-                        ),
-                        validator: _validatePassword,
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          SizedBox(
-                            height: 28,
-                            width: 28,
-                            child: Checkbox(
-                              value: _rememberUsername,
-                              activeColor: AppColors.primaryBlue,
-                              side: const BorderSide(
-                                color: AppColors.borderGray,
+                          const SizedBox(height: 16),
+                          _fieldLabel('เลือกคลังสินค้า'),
+                          const SizedBox(height: 8),
+                          _dropdownField<String>(
+                            value: _selectedWarehouse,
+                            items: _warehouses,
+                            prefixIcon: Icons.warehouse_outlined,
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() => _selectedWarehouse = value);
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          _fieldLabel('รหัสผู้ใช้งาน'),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _usernameController,
+                            textInputAction: TextInputAction.next,
+                            style: AppTextStyles.body(
+                              color: AppColors.primaryBlue,
+                            ),
+                            decoration: _fieldDecoration(
+                              hint: 'กรอกรหัสผู้ใช้งาน',
+                              prefixIcon: Icons.person_outline,
+                            ),
+                            validator: _validateUsername,
+                          ),
+                          const SizedBox(height: 16),
+                          _fieldLabel('รหัสผ่าน'),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _passwordController,
+                            obscureText: _obscurePassword,
+                            textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) => _handleLogin(),
+                            style: AppTextStyles.body(
+                              color: AppColors.primaryBlue,
+                            ),
+                            decoration: _fieldDecoration(
+                              hint: 'กรอกรหัสผ่าน',
+                              prefixIcon: Icons.lock_outline,
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                  color: AppColors.primaryBlue,
+                                  size: 22,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
                               ),
-                              onChanged: (value) {
-                                setState(() {
-                                  _rememberUsername = value ?? false;
-                                });
-                              },
                             ),
+                            validator: _validatePassword,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'จดจำชื่อผู้ใช้',
-                            style: AppTextStyles.small(),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              SizedBox(
+                                height: 28,
+                                width: 28,
+                                child: Checkbox(
+                                  value: _rememberPassword,
+                                  activeColor: AppColors.accentGreen,
+                                  side: const BorderSide(
+                                    color: AppColors.borderGray,
+                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _rememberPassword = value ?? false;
+                                    });
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'จำรหัสผ่าน',
+                                style: AppTextStyles.text(
+                                  fontSize: 13,
+                                  color: AppColors.primaryBlue,
+                                ),
+                              ),
+                              const Spacer(),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const ResetPasswordRequestPage(),
+                                    ),
+                                  );
+                                },
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.lock_outline,
+                                      color: AppColors.primaryBlue,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Reset Password',
+                                      style: AppTextStyles.link(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          const Spacer(),
-                          TextButton(
-                            onPressed: () {},
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: Text(
-                              'ลืมรหัสผ่าน?',
-                              style: AppTextStyles.link(),
+                          const SizedBox(height: 20),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _handleLogin,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.accentGreen,
+                                disabledBackgroundColor: AppColors.accentGreen
+                                    .withValues(alpha: 0.6),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 22,
+                                      width: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(
+                                          Icons.login_rounded,
+                                          color: Colors.white,
+                                          size: 22,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'เข้าสู่ระบบ',
+                                          style: AppTextStyles.button(),
+                                        ),
+                                      ],
+                                    ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _handleLogin,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryBlue,
-                            disabledBackgroundColor:
-                                AppColors.primaryBlue.withValues(alpha: 0.6),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 22,
-                                  width: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(
-                                      Icons.login_rounded,
-                                      color: Colors.white,
-                                      size: 22,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'เข้าสู่ระบบ',
-                                      style: AppTextStyles.button(),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'เวอร์ชัน 1.0.0',
+                      style: AppTextStyles.caption(),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-          const WmsLoginFooter(),
         ],
       ),
     );
