@@ -61,7 +61,7 @@ class AuthScaffold extends StatelessWidget {
                   if (showLogo) ...[
                     const SizedBox(height: 4),
                     Image.asset(
-                      'picture/wms_logo.jpg',
+                      'picture/wms_logo.png',
                       width: 180,
                       cacheWidth: 360,
                       fit: BoxFit.contain,

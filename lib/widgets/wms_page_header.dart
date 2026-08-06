@@ -31,7 +31,7 @@ class WmsPageHeader extends StatelessWidget {
             child: Row(
               children: [
                 Image.asset(
-                  'picture/wms_logo.jpg',
+                  'picture/wms_logo.png',
                   height: 36,
                   fit: BoxFit.contain,
                 ),

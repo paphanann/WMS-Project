@@ -31,7 +31,7 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      precacheImage(const AssetImage('picture/wms_logo.jpg'), context);
+      precacheImage(const AssetImage('picture/wms_logo.png'), context);
       precacheImage(const AssetImage('picture/background.png'), context);
     });
   }
@@ -173,7 +173,7 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   children: [
                     Image.asset(
-                      'picture/wms_logo.jpg',
+                      'picture/wms_logo.png',
                       width: 200,
                       cacheWidth: 400,
                       fit: BoxFit.contain,
