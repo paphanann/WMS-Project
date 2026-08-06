@@ -180,7 +180,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'เข้าสู่ระบบจ้า',
+                      'เข้าสู่ระบบจ้าาาาาา',
                       style: AppTextStyles.text(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
