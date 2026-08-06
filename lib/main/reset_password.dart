@@ -308,27 +308,6 @@ class _ResetPasswordNewPasswordPageState
     super.dispose();
   }
 
-  Widget _requirementItem(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle, color: AppColors.accentGreen, size: 16),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: AppTextStyles.text(
-                fontSize: 12,
-                color: AppColors.primaryBlue,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _next() {
     if (!_formKey.currentState!.validate()) return;
     Navigator.push(
@@ -377,10 +356,6 @@ class _ResetPasswordNewPasswordPageState
                   return null;
                 },
               ),
-              const SizedBox(height: 10),
-              _requirementItem('อย่างน้อย 8 ตัวอักษร'),
-              _requirementItem('ต้องมีตัวอักษรและตัวเลข'),
-              _requirementItem('ห้ามมีช่องว่าง'),
               const SizedBox(height: 16),
               AuthFormFields.label('ยืนยันรหัสผ่านใหม่'),
               const SizedBox(height: 8),
