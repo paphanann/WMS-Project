@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../widgets/home_menu_tile.dart';
@@ -23,7 +24,13 @@ class HomePage extends StatelessWidget {
     ('picture/Cycle_Count.png', 'Cycle Count'),
   ];
 
-  void _logout(BuildContext context) {
+  Future<void> _logout(BuildContext context) async {
+    try {
+      await AuthService.logout();
+    } catch (_) {
+      // ล้าง session ในเครื่องและกลับ login แม้ API ล้มเหลว
+    }
+    if (!context.mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const LoginPage()),

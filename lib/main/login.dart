@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import 'home.dart';
@@ -61,22 +62,31 @@ class _LoginPageState extends State<LoginPage> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 1));
-    if (!mounted) return;
+    try {
+      final data = await AuthService.login(
+        _usernameController.text.trim(),
+        _passwordController.text,
+      );
+      if (!mounted) return;
 
-    setState(() => _isLoading = false);
+      final user = data['user'] as Map<String, dynamic>? ?? {};
+      final loggedInUsername =
+          user['username']?.toString() ?? _usernameController.text.trim();
 
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => HomePage(
-          username: _usernameController.text.trim().isEmpty
-              ? 'PASS User'
-              : _usernameController.text.trim(),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => HomePage(username: loggedInUsername),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   InputDecoration _fieldDecoration({
