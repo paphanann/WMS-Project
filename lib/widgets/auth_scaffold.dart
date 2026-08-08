@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/server_config_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 
@@ -132,7 +133,7 @@ class AuthFormCard extends StatelessWidget {
 class AuthFormFields {
   AuthFormFields._();
 
-  static const databases = ['SBO_PRD_CT'];
+  static const databases = ServerConfigService.databases;
   static const warehouses = ['01 - คลังหลัก (Main Warehouse)'];
 
   static Widget label(String text) {

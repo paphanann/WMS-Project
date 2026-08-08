@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/auth_service.dart';
+import '../services/server_config_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import 'config_server.dart';
 import 'home.dart';
 import 'reset_password.dart';
 
@@ -22,12 +24,13 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
   bool _rememberPassword = true;
   bool _isLoading = false;
+  bool _isServerConnected = false;
   int _step = 0;
 
-  String _selectedDatabase = 'SBO_PRD_CT';
+  String _selectedDatabase = ServerConfigService.defaultDatabase;
   String _selectedWarehouse = '01 - คลังหลัก (Main Warehouse)';
 
-  static const _databases = ['SBO_PRD_CT'];
+  static const _databases = ServerConfigService.databases;
   static const _warehouses = [
     '01 - คลังหลัก (Main Warehouse)',
     '02 - คลังสินค้า 2',
@@ -104,9 +107,47 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _syncServer() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sync Server สำเร็จ')),
+  Future<void> _syncServer() async {
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const ConfigServerPage()),
+    );
+    if (!mounted) return;
+
+    if (saved == true) {
+      final config = await ServerConfigService.load();
+      if (!mounted) return;
+      setState(() {
+        _isServerConnected = true;
+        _selectedDatabase = config.database;
+      });
+    } else if (saved == false) {
+      setState(() => _isServerConnected = false);
+    }
+  }
+
+  Widget _connectionStatus() {
+    final color = _isServerConnected ? AppColors.accentGreen : Colors.red;
+    final label = _isServerConnected ? 'เชื่อมต่อแล้ว' : 'ยังไม่เชื่อมต่อ';
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: AppTextStyles.text(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 
@@ -273,29 +314,10 @@ class _LoginPageState extends State<LoginPage> {
     return Column(
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(child: _fieldLabel('เลือกฐานข้อมูล')),
-            TextButton.icon(
-              onPressed: _syncServer,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              icon: const Icon(
-                Icons.sync_rounded,
-                color: AppColors.accentGreen,
-                size: 18,
-              ),
-              label: Text(
-                'Sync Server',
-                style: AppTextStyles.text(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.accentGreen,
-                ),
-              ),
-            ),
+            _connectionStatus(),
           ],
         ),
         const SizedBox(height: 8),
@@ -307,7 +329,32 @@ class _LoginPageState extends State<LoginPage> {
             if (value != null) setState(() => _selectedDatabase = value);
           },
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: _syncServer,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            icon: const Icon(
+              Icons.sync_rounded,
+              color: AppColors.primaryBlue,
+              size: 18,
+            ),
+            label: Text(
+              'Sync Server',
+              style: AppTextStyles.text(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryBlue,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
         _fieldLabel('รหัสผู้ใช้งาน'),
         const SizedBox(height: 8),
         TextFormField(

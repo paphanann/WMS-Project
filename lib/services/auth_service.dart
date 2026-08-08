@@ -12,8 +12,9 @@ class AuthService {
     String username,
     String password,
   ) async {
+    final baseUrl = await ApiConfig.getBaseUrl();
     final res = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/auth/login'),
+      Uri.parse('$baseUrl/api/auth/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'username': username,
@@ -44,8 +45,9 @@ class AuthService {
     final sessionId = prefs.getString('sessionId') ?? '';
     final routeId = prefs.getString('routeId') ?? '';
 
+    final baseUrl = await ApiConfig.getBaseUrl();
     await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/auth/logout'),
+      Uri.parse('$baseUrl/api/auth/logout'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'sessionId': sessionId,
