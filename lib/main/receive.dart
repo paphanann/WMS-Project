@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import 'purchase_order_list.dart';
 import '../widgets/receive_option_card.dart';
 import '../widgets/wms_bottom_nav.dart';
 import '../widgets/wms_page_header.dart';
@@ -107,7 +108,20 @@ class _ReceivePageState extends State<ReceivePage> {
                       title: _options[i].$2,
                       subtitle: _options[i].$3,
                       isSelected: _selectedIndex == i,
-                      onTap: () => setState(() => _selectedIndex = i),
+                      onTap: () {
+                        if (i == 0) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PurchaseOrderListPage(
+                                username: widget.username,
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        setState(() => _selectedIndex = i);
+                      },
                     ),
                   ],
                 ],

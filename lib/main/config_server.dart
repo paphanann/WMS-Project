@@ -150,7 +150,7 @@ class _ConfigServerPageState extends State<ConfigServerPage> {
             const SizedBox(height: 8),
             TextFormField(
               controller: _ipController,
-              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.next,
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
               ],
@@ -171,7 +171,7 @@ class _ConfigServerPageState extends State<ConfigServerPage> {
             const SizedBox(height: 8),
             TextFormField(
               controller: _portController,
-              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.done,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               style: AppTextStyles.body(color: AppColors.primaryBlue),
               decoration: _fieldDecoration(
