@@ -7,7 +7,7 @@ void main() {
     await tester.pumpWidget(const PassWmsApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('ยินดีต้อนรับ'), findsOneWidget);
-    expect(find.text('เข้าสู่ระบบ'), findsOneWidget);
+    expect(find.text('เชื่อมต่อระบบ'), findsOneWidget);
+    expect(find.text('ถัดไป'), findsOneWidget);
   });
 }

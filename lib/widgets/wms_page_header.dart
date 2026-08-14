@@ -8,10 +8,12 @@ class WmsPageHeader extends StatelessWidget {
     super.key,
     required this.title,
     this.onHome,
+    this.onBack,
   });
 
   final String title;
   final VoidCallback? onHome;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -30,11 +32,21 @@ class WmsPageHeader extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Row(
               children: [
-                Image.asset(
-                  'picture/wms_logo.png',
-                  height: 36,
-                  fit: BoxFit.contain,
-                ),
+                if (onBack != null)
+                  IconButton(
+                    onPressed: onBack,
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: AppColors.primaryBlue,
+                      size: 22,
+                    ),
+                  )
+                else
+                  Image.asset(
+                    'picture/wms_logo.png',
+                    height: 36,
+                    fit: BoxFit.contain,
+                  ),
                 Expanded(
                   child: Text(
                     title,

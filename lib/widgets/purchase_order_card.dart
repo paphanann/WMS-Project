@@ -5,26 +5,19 @@ import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 
 class PurchaseOrderCard extends StatelessWidget {
-  const PurchaseOrderCard({
-    super.key,
-    required this.order,
-    this.onTap,
-  });
+  const PurchaseOrderCard({super.key, required this.order, this.onTap});
 
   final PurchaseOrderSummary order;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = order.tab == PurchaseOrderTab.complete
-        ? AppColors.textGray
-        : AppColors.accentGreen;
+    final statusColor =
+        order.isClosed ? AppColors.textGray : AppColors.accentGreen;
 
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(16),
-      elevation: 1,
-      shadowColor: Colors.black.withValues(alpha: 0.06),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
@@ -34,11 +27,10 @@ class PurchaseOrderCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Text(
-                      order.displayDocNum,
+                      order.poNo,
                       style: AppTextStyles.text(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -46,28 +38,23 @@ class PurchaseOrderCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '${order.lineCount} รายการ',
-                        style: AppTextStyles.text(
-                          fontSize: 13,
-                          color: AppColors.primaryBlue,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        order.statusLabel,
-                        style: AppTextStyles.text(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: statusColor,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    '${order.lineCount} รายการ',
+                    style: AppTextStyles.text(fontSize: 13),
                   ),
                 ],
+              ),
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  order.statusText,
+                  style: AppTextStyles.text(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: statusColor,
+                  ),
+                ),
               ),
               const SizedBox(height: 10),
               Text(
@@ -82,16 +69,10 @@ class PurchaseOrderCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    order.formattedDate,
-                    style: AppTextStyles.text(
-                      fontSize: 13,
-                      color: AppColors.textGray,
-                    ),
-                  ),
+                  Text(order.dateText, style: AppTextStyles.caption()),
                   const Spacer(),
                   Text(
-                    '${order.totalQuantity.toStringAsFixed(0)} ชิ้น',
+                    '${order.totalQty.toStringAsFixed(0)} ชิ้น',
                     style: AppTextStyles.text(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,

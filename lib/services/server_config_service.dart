@@ -7,9 +7,19 @@ class ServerConfigService {
   ServerConfigService._();
 
   static const defaultDatabase = 'WMS_W9';
+  static const defaultBaseUrl = 'http://192.168.1.119:3001';
   static const databases = [defaultDatabase];
 
-  /// คืนชื่อ DB ที่ใช้ได้ — ถ้าเคยบันทึกชื่อเก่า (เช่น SBO_PRD_CT) จะเปลี่ยนเป็น WMS_W9
+  static Future<String> getBaseUrl() async {
+    final config = await load();
+    if (config.ip.isNotEmpty && config.port.isNotEmpty) {
+      return buildBaseUrl(config.ip, config.port);
+    }
+    return defaultBaseUrl;
+  }
+
+  static String buildBaseUrl(String ip, String port) => 'http://$ip:$port';
+
   static String resolveDatabase(String? saved) {
     if (saved != null && databases.contains(saved)) return saved;
     return defaultDatabase;
@@ -36,7 +46,7 @@ class ServerConfigService {
     required String port,
     required String database,
   }) async {
-    final baseUrl = 'http://$ip:$port';
+    final baseUrl = buildBaseUrl(ip, port);
 
     try {
       final res = await http

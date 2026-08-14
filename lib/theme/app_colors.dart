@@ -7,7 +7,6 @@ class AppColors {
   static const Color accentGreen = Color(0xFF2EAF5A);
   static const Color textGray = Color(0xFF8A8A8A);
   static const Color borderGray = Color(0xFFD9D9D9);
+  static const Color pageBg = Color(0xFFF4F6F8);
   static const Color inputFill = Color(0xFFFAFAFA);
-  static const Color waveBlue = Color(0xFF061A3A);
-  static const Color waveGreen = Color(0xFF2DB84B);
 }

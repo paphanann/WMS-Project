@@ -3,41 +3,35 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../config/api_config.dart';
+import 'server_config_service.dart';
 
 class AuthService {
-  AuthService._();
-
   static Future<Map<String, dynamic>> login(
     String username,
     String password,
   ) async {
-    final baseUrl = await ApiConfig.getBaseUrl();
+    final baseUrl = await ServerConfigService.getBaseUrl();
+    final user = username.trim().toUpperCase();
+
     final res = await http.post(
       Uri.parse('$baseUrl/api/auth/login'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'username': username,
-        'password': password,
-      }),
+      body: jsonEncode({'username': user, 'password': password}),
     );
 
     final data = jsonDecode(res.body) as Map<String, dynamic>;
-    if (res.statusCode == 200 && data['success'] == true) {
-      final prefs = await SharedPreferences.getInstance();
-      final session = data['session'] as Map<String, dynamic>? ?? {};
-      final user = data['user'] as Map<String, dynamic>? ?? {};
-
-      await prefs.setString('sessionId', session['sessionId']?.toString() ?? '');
-      await prefs.setString('routeId', session['routeId']?.toString() ?? '');
-      await prefs.setString(
-        'username',
-        user['username']?.toString() ?? username,
-      );
-      return data;
+    if (res.statusCode != 200 || data['success'] != true) {
+      throw Exception(data['message']?.toString() ?? 'เข้าสู่ระบบไม่สำเร็จ');
     }
 
-    throw Exception(data['message']?.toString() ?? 'เข้าสู่ระบบไม่สำเร็จ');
+    final prefs = await SharedPreferences.getInstance();
+    final session = data['session'] as Map<String, dynamic>? ?? {};
+
+    await prefs.setString('sessionId', session['sessionId']?.toString() ?? '');
+    await prefs.setString('routeId', session['routeId']?.toString() ?? '');
+    await prefs.setString('username', user);
+
+    return data;
   }
 
   static Future<void> logout() async {
@@ -45,16 +39,19 @@ class AuthService {
     final sessionId = prefs.getString('sessionId') ?? '';
     final routeId = prefs.getString('routeId') ?? '';
 
-    final baseUrl = await ApiConfig.getBaseUrl();
-    await http.post(
-      Uri.parse('$baseUrl/api/auth/logout'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'sessionId': sessionId,
-        'routeId': routeId,
-      }),
-    );
+    try {
+      final baseUrl = await ServerConfigService.getBaseUrl();
+      await http.post(
+        Uri.parse('$baseUrl/api/auth/logout'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'sessionId': sessionId, 'routeId': routeId}),
+      );
+    } catch (_) {}
 
-    await prefs.clear();
+    await prefs.remove('sessionId');
+    await prefs.remove('routeId');
+    await prefs.remove('username');
+    await prefs.remove('warehouse');
+    await prefs.remove('database');
   }
 }

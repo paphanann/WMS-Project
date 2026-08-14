@@ -1,4 +1,4 @@
-enum PurchaseOrderTab { waiting, partial, complete }
+enum PoTab { open, closed }
 
 class PurchaseOrderLine {
   const PurchaseOrderLine({
@@ -17,16 +17,16 @@ class PurchaseOrderLine {
 
   factory PurchaseOrderLine.fromJson(Map<String, dynamic> json) {
     return PurchaseOrderLine(
-      lineNum: _asInt(json['LineNum'] ?? json['lineNum']),
-      itemCode: (json['ItemCode'] ?? json['itemCode'])?.toString() ?? '',
-      itemDescription:
-          (json['ItemDescription'] ?? json['itemDescription'])?.toString() ??
-              '',
-      quantity: _asDouble(json['Quantity'] ?? json['quantity']),
-      warehouseCode:
-          (json['WarehouseCode'] ?? json['warehouseCode'])?.toString() ?? '',
+      lineNum: _toInt(json['lineNum']),
+      itemCode: json['itemCode']?.toString() ?? '',
+      itemDescription: json['itemDescription']?.toString() ?? '',
+      quantity: _toDouble(json['quantity'] ?? json['orderedQty']),
+      warehouseCode: json['warehouseCode']?.toString() ?? '',
     );
   }
+
+  String get displayName =>
+      itemDescription.isNotEmpty ? itemDescription : itemCode;
 }
 
 class PurchaseOrderSummary {
@@ -37,7 +37,6 @@ class PurchaseOrderSummary {
     required this.cardName,
     required this.docDate,
     required this.documentStatus,
-    required this.cancelStatus,
     required this.lines,
     this.openLineCount = 0,
   });
@@ -48,55 +47,42 @@ class PurchaseOrderSummary {
   final String cardName;
   final DateTime? docDate;
   final String documentStatus;
-  final String cancelStatus;
   final List<PurchaseOrderLine> lines;
   final int openLineCount;
 
-  int get lineCount =>
-      lines.isNotEmpty ? lines.length : openLineCount;
+  bool get isClosed => documentStatus == 'C';
 
-  double get totalQuantity {
-    if (lines.isNotEmpty) {
-      return lines.fold(0, (sum, line) => sum + line.quantity);
-    }
-    return 0;
+  PoTab get tab => isClosed ? PoTab.closed : PoTab.open;
+
+  int get lineCount => lines.isNotEmpty ? lines.length : openLineCount;
+
+  double get totalQty {
+    if (lines.isEmpty) return 0;
+    return lines.fold(0.0, (sum, line) => sum + line.quantity);
   }
 
-  String get displayDocNum {
-    final raw = docNum.toString();
-    if (raw.startsWith('PO')) return raw;
-    return 'PO$raw';
-  }
+  String get poNo => 'PO$docNum';
 
-  String get statusLabel {
-    if (_isClosedStatus(documentStatus)) return 'รับครบ';
-    if (tab == PurchaseOrderTab.partial) return 'บางส่วน';
-    return 'รอรับ';
-  }
+  String get statusText => isClosed ? 'รับครบ' : 'รอรับ';
 
-  PurchaseOrderTab get tab {
-    if (_isClosedStatus(documentStatus)) return PurchaseOrderTab.complete;
-    return PurchaseOrderTab.waiting;
-  }
-
-  String get formattedDate {
+  String get dateText {
     if (docDate == null) return '-';
     final d = docDate!;
-    return '${d.day.toString().padLeft(2, '0')}/'
-        '${d.month.toString().padLeft(2, '0')}/'
-        '${d.year}';
+    final dd = d.day.toString().padLeft(2, '0');
+    final mm = d.month.toString().padLeft(2, '0');
+    return '$dd/$mm/${d.year}';
   }
 
-  bool matchesSearch(String query) {
-    if (query.isEmpty) return true;
-    final q = query.toLowerCase();
-    return displayDocNum.toLowerCase().contains(q) ||
-        docNum.toString().contains(q) ||
-        cardName.toLowerCase().contains(q) ||
-        cardCode.toLowerCase().contains(q);
+  bool matchQuery(String q) {
+    if (q.isEmpty) return true;
+    final query = q.toLowerCase();
+    return poNo.toLowerCase().contains(query) ||
+        docNum.toString().contains(query) ||
+        cardName.toLowerCase().contains(query) ||
+        cardCode.toLowerCase().contains(query);
   }
 
-  static PurchaseOrderSummary fromApiMap(Map<String, dynamic> json) {
+  factory PurchaseOrderSummary.fromJson(Map<String, dynamic> json) {
     final rawLines = json['lines'];
     final lines = rawLines is List
         ? rawLines
@@ -106,58 +92,26 @@ class PurchaseOrderSummary {
         : <PurchaseOrderLine>[];
 
     return PurchaseOrderSummary(
-      docEntry: _asInt(json['docEntry'] ?? json['DocEntry']),
-      docNum: _asInt(json['docNum'] ?? json['DocNum']),
-      cardCode: (json['cardCode'] ?? json['CardCode'])?.toString() ?? '',
-      cardName: (json['cardName'] ?? json['CardName'])?.toString() ?? '',
-      docDate: _parseDate(json['docDate'] ?? json['DocDate']),
-      documentStatus:
-          (json['documentStatus'] ?? json['DocumentStatus'])?.toString() ?? 'O',
-      cancelStatus:
-          (json['cancelStatus'] ?? json['CancelStatus'])?.toString() ?? 'csNo',
+      docEntry: _toInt(json['docEntry']),
+      docNum: _toInt(json['docNum']),
+      cardCode: json['cardCode']?.toString() ?? '',
+      cardName: json['cardName']?.toString() ?? '',
+      docDate: DateTime.tryParse(json['docDate']?.toString() ?? ''),
+      documentStatus: json['documentStatus']?.toString() ?? 'O',
       lines: lines,
-      openLineCount: _asInt(json['openLineCount'] ?? lines.length),
-    );
-  }
-
-  static PurchaseOrderSummary fromRows({
-    required Map<String, dynamic> header,
-    required List<Map<String, dynamic>> lineRows,
-  }) {
-    return PurchaseOrderSummary(
-      docEntry: _asInt(header['DocEntry']),
-      docNum: _asInt(header['DocNum']),
-      cardCode: header['CardCode']?.toString() ?? '',
-      cardName: header['CardName']?.toString() ?? '',
-      docDate: _parseDate(header['DocDate']),
-      documentStatus: header['DocumentStatus']?.toString() ?? 'O',
-      cancelStatus: header['CancelStatus']?.toString() ?? 'csNo',
-      lines: lineRows.map(PurchaseOrderLine.fromJson).toList(),
+      openLineCount: _toInt(json['openLineCount']),
     );
   }
 }
 
-bool _isClosedStatus(String status) {
-  final normalized = status.trim().toLowerCase();
-  return normalized == 'c' ||
-      normalized == 'bost_close' ||
-      normalized.contains('close');
+int _toInt(dynamic v) {
+  if (v == null) return 0;
+  if (v is int) return v;
+  return int.tryParse(v.toString()) ?? 0;
 }
 
-int _asInt(dynamic value) {
-  if (value == null) return 0;
-  if (value is int) return value;
-  return int.tryParse(value.toString()) ?? 0;
-}
-
-double _asDouble(dynamic value) {
-  if (value == null) return 0;
-  if (value is num) return value.toDouble();
-  return double.tryParse(value.toString()) ?? 0;
-}
-
-DateTime? _parseDate(dynamic value) {
-  if (value == null) return null;
-  final raw = value.toString();
-  return DateTime.tryParse(raw);
+double _toDouble(dynamic v) {
+  if (v == null) return 0;
+  if (v is num) return v.toDouble();
+  return double.tryParse(v.toString()) ?? 0;
 }

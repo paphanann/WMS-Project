@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../services/server_config_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../widgets/auth_scaffold.dart';
 
 class ConfigServerPage extends StatefulWidget {
   const ConfigServerPage({super.key});
@@ -85,39 +86,6 @@ class _ConfigServerPageState extends State<ConfigServerPage> {
     }
   }
 
-  InputDecoration _fieldDecoration({
-    required IconData prefixIcon,
-    String? hint,
-  }) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: AppTextStyles.hint(),
-      filled: true,
-      fillColor: Colors.white,
-      prefixIcon: Icon(prefixIcon, color: AppColors.primaryBlue, size: 22),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.borderGray),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.5),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red),
-      ),
-    );
-  }
-
-  Widget _fieldLabel(String text) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Text(text, style: AppTextStyles.label()),
-    );
-  }
-
   Widget _formView() {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -146,7 +114,7 @@ class _ConfigServerPageState extends State<ConfigServerPage> {
               style: AppTextStyles.subtitle(),
             ),
             const SizedBox(height: 24),
-            _fieldLabel('IP Address'),
+            AuthFormFields.label('IP Address'),
             const SizedBox(height: 8),
             TextFormField(
               controller: _ipController,
@@ -155,9 +123,10 @@ class _ConfigServerPageState extends State<ConfigServerPage> {
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
               ],
               style: AppTextStyles.body(color: AppColors.primaryBlue),
-              decoration: _fieldDecoration(
+              decoration: AuthFormFields.decoration(
                 hint: 'กรอก IP Address',
                 prefixIcon: Icons.computer_outlined,
+                iconColor: AppColors.primaryBlue,
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -167,16 +136,17 @@ class _ConfigServerPageState extends State<ConfigServerPage> {
               },
             ),
             const SizedBox(height: 16),
-            _fieldLabel('Port'),
+            AuthFormFields.label('Port'),
             const SizedBox(height: 8),
             TextFormField(
               controller: _portController,
               textInputAction: TextInputAction.done,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               style: AppTextStyles.body(color: AppColors.primaryBlue),
-              decoration: _fieldDecoration(
+              decoration: AuthFormFields.decoration(
                 hint: '3001',
                 prefixIcon: Icons.hub_outlined,
+                iconColor: AppColors.primaryBlue,
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -186,94 +156,27 @@ class _ConfigServerPageState extends State<ConfigServerPage> {
               },
             ),
             const SizedBox(height: 16),
-            _fieldLabel('Database'),
+            AuthFormFields.label('Database'),
             const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              key: ValueKey(_selectedDatabase),
-              initialValue: _selectedDatabase,
-              items: ServerConfigService.databases
-                  .map(
-                    (db) => DropdownMenuItem(
-                      value: db,
-                      child: Text(
-                        db,
-                        style: AppTextStyles.body(color: AppColors.primaryBlue),
-                      ),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) setState(() => _selectedDatabase = value);
+            AuthFormFields.dropdown(
+              value: _selectedDatabase,
+              items: ServerConfigService.databases,
+              prefixIcon: Icons.storage_outlined,
+              iconColor: AppColors.primaryBlue,
+              onChanged: (v) {
+                if (v != null) setState(() => _selectedDatabase = v);
               },
-              isExpanded: true,
-              icon: const Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: AppColors.primaryBlue,
-              ),
-              decoration: _fieldDecoration(prefixIcon: Icons.storage_outlined),
             ),
             const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.primaryBlue.withValues(alpha: 0.15),
-                ),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    color: AppColors.primaryBlue,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'เมื่อกด "บันทึกการตั้งค่า" ระบบจะทำการทดสอบการเชื่อมต่อ '
-                      'และบันทึกการตั้งค่าให้อัตโนมัติ',
-                      style: AppTextStyles.text(
-                        fontSize: 13,
-                        color: AppColors.primaryBlue,
-                      ).copyWith(height: 1.4),
-                    ),
-                  ),
-                ],
-              ),
+            Text(
+              'กดบันทึกเพื่อทดสอบการเชื่อมต่อและบันทึกค่า',
+              style: AppTextStyles.caption(),
             ),
             const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _saveConfig,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  disabledBackgroundColor:
-                      AppColors.primaryBlue.withValues(alpha: 0.6),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: _isLoading
-                    ? const SizedBox.shrink()
-                    : const Icon(Icons.save_outlined, color: Colors.white),
-                label: _isLoading
-                    ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Text('บันทึกการตั้งค่า', style: AppTextStyles.button()),
-              ),
+            AuthFormFields.blueButton(
+              label: 'บันทึกการตั้งค่า',
+              isLoading: _isLoading,
+              onPressed: _saveConfig,
             ),
           ],
         ),
@@ -330,6 +233,50 @@ class _ConfigServerPageState extends State<ConfigServerPage> {
     } else {
       Navigator.pop(context);
     }
+  }
+
+  Widget _successBtn({
+    required String label,
+    required IconData icon,
+    required VoidCallback onPressed,
+    Color color = AppColors.primaryBlue,
+    bool filled = false,
+  }) {
+    final style = AppTextStyles.text(
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+      color: filled ? Colors.white : color,
+    );
+
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: filled
+          ? ElevatedButton.icon(
+              onPressed: onPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: color,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: Icon(icon, color: Colors.white),
+              label: Text(label, style: AppTextStyles.button()),
+            )
+          : OutlinedButton.icon(
+              onPressed: onPressed,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: color,
+                side: BorderSide(color: color, width: 1.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: Icon(icon, size: 22),
+              label: Text(label, style: style),
+            ),
+    );
   }
 
   Widget _successView() {
@@ -424,72 +371,24 @@ class _ConfigServerPageState extends State<ConfigServerPage> {
             ),
           ),
           const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: OutlinedButton.icon(
-              onPressed: _changeServer,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primaryBlue,
-                side: const BorderSide(color: AppColors.primaryBlue, width: 1.5),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              icon: const Icon(Icons.sync_rounded, size: 22),
-              label: Text(
-                'เปลี่ยนเซิร์ฟเวอร์',
-                style: AppTextStyles.text(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primaryBlue,
-                ),
-              ),
-            ),
+          _successBtn(
+            label: 'เปลี่ยนเซิร์ฟเวอร์',
+            icon: Icons.sync_rounded,
+            onPressed: _changeServer,
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: OutlinedButton.icon(
-              onPressed: _cancelConnection,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red,
-                side: const BorderSide(color: Colors.red, width: 1.5),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              icon: const Icon(Icons.delete_outline, size: 22),
-              label: Text(
-                'ยกเลิกการเชื่อมต่อ',
-                style: AppTextStyles.text(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.red,
-                ),
-              ),
-            ),
+          _successBtn(
+            label: 'ยกเลิกการเชื่อมต่อ',
+            icon: Icons.delete_outline,
+            color: Colors.red,
+            onPressed: _cancelConnection,
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton.icon(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              icon: const Icon(Icons.home_outlined, color: Colors.white),
-              label: Text(
-                'กลับหน้าเข้าสู่ระบบ',
-                style: AppTextStyles.button(),
-              ),
-            ),
+          _successBtn(
+            label: 'กลับหน้าเข้าสู่ระบบ',
+            icon: Icons.home_outlined,
+            filled: true,
+            onPressed: () => Navigator.pop(context, true),
           ),
         ],
       ),
@@ -499,7 +398,7 @@ class _ConfigServerPageState extends State<ConfigServerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F8),
+      backgroundColor: AppColors.pageBg,
       appBar: AppBar(
         backgroundColor: AppColors.primaryBlue,
         foregroundColor: Colors.white,

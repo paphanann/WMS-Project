@@ -134,7 +134,12 @@ class AuthFormFields {
   AuthFormFields._();
 
   static const databases = ServerConfigService.databases;
-  static const warehouses = ['01 - คลังหลัก (Main Warehouse)'];
+  static const warehouses = [
+    '01 - คลังหลัก (Main Warehouse)',
+    '02 - คลังสินค้า 2',
+    '03 - คลังสินค้า 3',
+    '04 - คลังสินค้า 4',
+  ];
 
   static Widget label(String text) {
     return Align(
@@ -147,13 +152,14 @@ class AuthFormFields {
     required IconData prefixIcon,
     String? hint,
     Widget? suffixIcon,
+    Color iconColor = AppColors.accentGreen,
   }) {
     return InputDecoration(
       hintText: hint,
       hintStyle: AppTextStyles.hint(),
       filled: true,
       fillColor: Colors.white,
-      prefixIcon: Icon(prefixIcon, color: AppColors.accentGreen, size: 22),
+      prefixIcon: Icon(prefixIcon, color: iconColor, size: 22),
       suffixIcon: suffixIcon,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       enabledBorder: OutlineInputBorder(
@@ -180,6 +186,7 @@ class AuthFormFields {
     required List<T> items,
     required IconData prefixIcon,
     required ValueChanged<T?> onChanged,
+    Color iconColor = AppColors.accentGreen,
   }) {
     return DropdownButtonFormField<T>(
       key: ValueKey(value),
@@ -202,7 +209,7 @@ class AuthFormFields {
         Icons.keyboard_arrow_down_rounded,
         color: AppColors.primaryBlue,
       ),
-      decoration: decoration(prefixIcon: prefixIcon),
+      decoration: decoration(prefixIcon: prefixIcon, iconColor: iconColor),
     );
   }
 
@@ -249,30 +256,39 @@ class AuthFormFields {
     );
   }
 
-  static Widget outlineButton({
+  static Widget blueButton({
     required String label,
     required VoidCallback? onPressed,
+    IconData icon = Icons.save_outlined,
+    bool isLoading = false,
   }) {
     return SizedBox(
       width: double.infinity,
       height: 52,
-      child: OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.accentGreen,
-          side: const BorderSide(color: AppColors.accentGreen, width: 1.5),
+      child: ElevatedButton.icon(
+        onPressed: isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primaryBlue,
+          disabledBackgroundColor:
+              AppColors.primaryBlue.withValues(alpha: 0.6),
+          elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        child: Text(
-          label,
-          style: AppTextStyles.text(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.accentGreen,
-          ),
-        ),
+        icon: isLoading
+            ? const SizedBox.shrink()
+            : Icon(icon, color: Colors.white),
+        label: isLoading
+            ? const SizedBox(
+                height: 22,
+                width: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Text(label, style: AppTextStyles.button()),
       ),
     );
   }

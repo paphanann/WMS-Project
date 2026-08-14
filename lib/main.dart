@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'main/login.dart';
+import 'screens/login.dart';
 import 'theme/app_colors.dart';
 
 void main() {

@@ -62,7 +62,7 @@ class _ReceivePageState extends State<ReceivePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F8),
+      backgroundColor: AppColors.pageBg,
       body: Column(
         children: [
           WmsPageHeader(
