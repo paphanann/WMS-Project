@@ -165,15 +165,18 @@ class _PurchaseOrderListPageState extends State<PurchaseOrderListPage> {
         separatorBuilder: (_, _) => const SizedBox(height: 14),
         itemBuilder: (_, i) => PurchaseOrderCard(
           order: list[i],
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => PurchaseOrderDetailPage(
-                order: list[i],
-                username: widget.username,
+          onTap: () async {
+            final saved = await Navigator.push<bool>(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PurchaseOrderDetailPage(
+                  order: list[i],
+                  username: widget.username,
+                ),
               ),
-            ),
-          ),
+            );
+            if (saved == true && mounted) _load();
+          },
         ),
       ),
     );

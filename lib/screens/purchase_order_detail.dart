@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/product_item.dart';
 import '../models/purchase_order.dart';
+import '../models/warehouse.dart';
 import '../services/purchase_order_service.dart';
+import '../services/session_store.dart';
+import '../services/warehouse_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../widgets/add_product_sheet.dart';
 import '../widgets/wms_page_header.dart';
 import 'home.dart';
 
@@ -24,23 +29,37 @@ class PurchaseOrderDetailPage extends StatefulWidget {
 }
 
 class _LineInput {
-  _LineInput(PurchaseOrderLine line)
-      : line = line,
-        receivedCtrl = TextEditingController(
-          text: _qtyText(line.quantity),
+  _LineInput(
+    this.line, {
+    this.isExtra = false,
+  })  : receivedCtrl = TextEditingController(
+          text: _qtyText(isExtra ? 0 : line.quantity),
         ),
-        batchCtrl = TextEditingController();
+        orderedCtrl = isExtra ? TextEditingController(text: '0') : null,
+        batchCtrl = TextEditingController(),
+        warehouseCode = line.warehouseCode,
+        warehouseName = line.warehouseName;
 
-  final PurchaseOrderLine line;
-  final TextEditingController receivedCtrl;
-  final TextEditingController batchCtrl;
-  bool isFree = false;
-  String binLocation = '';
+  factory _LineInput.fromPoLine(PurchaseOrderLine line) =>
+      _LineInput(line);
 
-  String get binText {
-    if (binLocation.isNotEmpty) return binLocation;
-    final wh = line.warehouseCode.isNotEmpty ? line.warehouseCode : '01';
-    return '$wh / -';
+  factory _LineInput.fromProduct(
+    ProductItem product, {
+    required int lineNum,
+    required String warehouseCode,
+    required String warehouseName,
+  }) {
+    return _LineInput(
+      PurchaseOrderLine(
+        lineNum: lineNum,
+        itemCode: product.itemCode,
+        itemDescription: product.itemName,
+        quantity: 0,
+        warehouseCode: warehouseCode,
+        warehouseName: warehouseName,
+      ),
+      isExtra: true,
+    );
   }
 
   static String _qtyText(double v) {
@@ -48,8 +67,18 @@ class _LineInput {
     return v.toString();
   }
 
+  final PurchaseOrderLine line;
+  final TextEditingController receivedCtrl;
+  final TextEditingController? orderedCtrl;
+  final TextEditingController batchCtrl;
+  final bool isExtra;
+  bool isFree = false;
+  String warehouseCode;
+  String warehouseName;
+
   void dispose() {
     receivedCtrl.dispose();
+    orderedCtrl?.dispose();
     batchCtrl.dispose();
   }
 }
@@ -64,12 +93,41 @@ class _PurchaseOrderDetailPageState extends State<PurchaseOrderDetailPage> {
   List<_LineInput> _lines = [];
   bool _addFreeItem = false;
   bool _saving = false;
+  String _warehouseCode = '-';
+  String _warehouseName = '';
+  Map<String, String> _warehouseNames = {};
+  List<Warehouse> _warehouses = [];
+  int _nextExtraLineNum = -1;
 
   @override
   void initState() {
     super.initState();
     _receiveDateCtrl.text = _formatDate(DateTime.now());
+    _loadWarehouse();
     _load();
+  }
+
+  Future<void> _loadWarehouse() async {
+    final code = await SessionStore.warehouseCode();
+    final name = await SessionStore.warehouseName();
+    if (!mounted) return;
+    setState(() {
+      if (code != null && code.isNotEmpty) _warehouseCode = code;
+      _warehouseName = name ?? '';
+    });
+  }
+
+  String _lineBinLocation(_LineInput row) {
+    if (row.isExtra) {
+      if (row.warehouseCode.isEmpty) return '-';
+      final name = row.warehouseName.isNotEmpty
+          ? row.warehouseName
+          : (_warehouseNames[row.warehouseCode] ?? '');
+      if (name.isNotEmpty) return '${row.warehouseCode} / $name';
+      return '${row.warehouseCode} / -';
+    }
+
+    return row.line.binLocationDisplay(_warehouseNames);
   }
 
   @override
@@ -95,17 +153,22 @@ class _PurchaseOrderDetailPageState extends State<PurchaseOrderDetailPage> {
     });
 
     try {
-      PurchaseOrderSummary order;
+      final order =
+          await PurchaseOrderService.fetchDetail(widget.order.docEntry);
+
+      Map<String, String> nameMap = {};
+      List<Warehouse> warehouses = [];
       try {
-        order = await PurchaseOrderService.fetchDetail(widget.order.docEntry);
-      } catch (_) {
-        order = widget.order;
-      }
+        warehouses = await WarehouseService.fetchList();
+        nameMap = {for (final w in warehouses) w.code: w.name};
+      } catch (_) {}
 
       if (!mounted) return;
       setState(() {
         _order = order;
-        _lines = order.lines.map(_LineInput.new).toList();
+        _lines = order.lines.map(_LineInput.fromPoLine).toList();
+        _warehouseNames = nameMap;
+        _warehouses = warehouses;
         _loading = false;
       });
     } catch (e) {
@@ -125,14 +188,95 @@ class _PurchaseOrderDetailPageState extends State<PurchaseOrderDetailPage> {
     );
   }
 
-  Future<void> _save() async {
-    setState(() => _saving = true);
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-    setState(() => _saving = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('บันทึกข้อมูลเรียบร้อย')),
+  Future<void> _openAddProduct() async {
+    final codes = _lines.map((r) => r.line.itemCode).toSet();
+    final picked = await AddProductSheet.show(
+      context,
+      existingCodes: codes,
     );
+    if (picked == null || !mounted) return;
+
+    setState(() {
+      final row = _LineInput.fromProduct(
+        picked,
+        lineNum: _nextExtraLineNum,
+        warehouseCode: _warehouseCode == '-' ? '' : _warehouseCode,
+        warehouseName: _warehouseName,
+      );
+      if (_addFreeItem) row.isFree = true;
+      _lines.add(row);
+      _nextExtraLineNum--;
+    });
+  }
+
+  Future<void> _save() async {
+    if (_deliveryNoteCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('กรุณากรอกเลขที่ใบส่งของ')),
+      );
+      return;
+    }
+
+    if (_lines.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ไม่มีรายการสินค้า')),
+      );
+      return;
+    }
+
+    final extraMissingWarehouse = _lines.any(
+      (r) => r.isExtra && r.warehouseCode.isEmpty,
+    );
+    if (extraMissingWarehouse) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('กรุณาเลือกคลังสำหรับรายการที่เพิ่มใหม่')),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      final lines = _lines.map((row) {
+        final item = <String, dynamic>{
+          'lineNum': row.line.lineNum,
+          'itemCode': row.line.itemCode,
+          'receivedQty': double.tryParse(row.receivedCtrl.text.trim()) ?? 0,
+          'isFree': row.isFree,
+        };
+        final batch = row.batchCtrl.text.trim();
+        if (batch.isNotEmpty) item['batchNo'] = batch;
+        if (row.isExtra) {
+          item['isExtra'] = true;
+          item['quantity'] =
+              double.tryParse(row.orderedCtrl?.text.trim() ?? '') ?? 0;
+          item['warehouseCode'] = row.warehouseCode;
+          if (row.warehouseName.isNotEmpty) {
+            item['warehouseName'] = row.warehouseName;
+          }
+        }
+        return item;
+      }).toList();
+
+      await PurchaseOrderService.saveReceipt(
+        docEntry: widget.order.docEntry,
+        receiveDate: _receiveDateCtrl.text.trim(),
+        deliveryNote: _deliveryNoteCtrl.text.trim(),
+        lines: lines,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('บันทึกรับสินค้าเรียบร้อย')),
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   Widget _sectionTitle(String text) {
@@ -216,7 +360,8 @@ class _PurchaseOrderDetailPageState extends State<PurchaseOrderDetailPage> {
   static const _colReceiveQty = 84.0;
   static const _colFree = 48.0;
   static const _colBatch = 136.0;
-  static const _colBin = 140.0;
+  static const _colBin = 200.0;
+  static const _colDelete = 52.0;
 
   InputDecoration _compactInput({String? hint}) {
     return InputDecoration(
@@ -234,6 +379,18 @@ class _PurchaseOrderDetailPageState extends State<PurchaseOrderDetailPage> {
         borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: AppColors.primaryBlue),
       ),
+    );
+  }
+
+  Widget _qtyField(TextEditingController ctrl) {
+    return TextField(
+      controller: ctrl,
+      textAlign: TextAlign.center,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+      ],
+      decoration: _compactInput(),
     );
   }
 
@@ -313,6 +470,147 @@ class _PurchaseOrderDetailPageState extends State<PurchaseOrderDetailPage> {
     );
   }
 
+  Future<void> _removeLine(_LineInput row) async {
+    if (!row.isExtra) return;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('ลบรายการ'),
+        content: Text('ต้องการลบรายการ ${row.line.itemCode} ใช่ไหม?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('ยกเลิก'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('ลบ', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true || !mounted) return;
+
+    setState(() {
+      row.dispose();
+      _lines.remove(row);
+    });
+  }
+
+  Widget _deleteCell(_LineInput row) {
+    if (!row.isExtra) {
+      return const SizedBox(width: 36, height: 36);
+    }
+
+    return Material(
+      color: Colors.red.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: () => _removeLine(row),
+        borderRadius: BorderRadius.circular(8),
+        child: const SizedBox(
+          width: 36,
+          height: 36,
+          child: Icon(
+            Icons.delete_outline,
+            color: Colors.red,
+            size: 20,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _warehouseCell(_LineInput row) {
+    if (!row.isExtra) {
+      return Text(
+        row.line.binLocationDisplay(_warehouseNames),
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
+        style: AppTextStyles.text(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primaryBlue,
+        ),
+      );
+    }
+
+    if (_warehouses.isEmpty) {
+      return Text(
+        _lineBinLocation(row),
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
+        style: AppTextStyles.text(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primaryBlue,
+        ),
+      );
+    }
+
+    final selected = _warehouses.any((w) => w.code == row.warehouseCode)
+        ? row.warehouseCode
+        : null;
+    final labelStyle = AppTextStyles.text(
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      color: AppColors.primaryBlue,
+    );
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.borderGray),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          isDense: true,
+          value: selected,
+          dropdownColor: Colors.white,
+          hint: Text('เลือกคลัง', style: AppTextStyles.hint()),
+          style: labelStyle,
+          items: _warehouses
+              .map(
+                (wh) => DropdownMenuItem(
+                  value: wh.code,
+                  child: Text(
+                    wh.name.isEmpty ? wh.code : '${wh.code} / ${wh.name}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: labelStyle,
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (code) {
+            if (code == null) return;
+            final wh = _warehouses.firstWhere((w) => w.code == code);
+            setState(() {
+              row.warehouseCode = wh.code;
+              row.warehouseName = wh.name;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _orderQtyCell(_LineInput row) {
+    if (!row.isExtra) {
+      return Text(
+        _qtyText(row.line.quantity),
+        textAlign: TextAlign.center,
+        style: AppTextStyles.text(fontWeight: FontWeight.w600),
+      );
+    }
+    return _qtyField(row.orderedCtrl!);
+  }
+
   TableRow _lineTableRow(_LineInput row) {
     final line = row.line;
     return TableRow(
@@ -323,26 +621,8 @@ class _PurchaseOrderDetailPageState extends State<PurchaseOrderDetailPage> {
       ),
       children: [
         _tableCell(_productCell(line), _colProduct),
-        _tableCell(
-          Text(
-            _qtyText(line.quantity),
-            textAlign: TextAlign.center,
-            style: AppTextStyles.text(fontWeight: FontWeight.w600),
-          ),
-          _colOrderQty,
-        ),
-        _tableCell(
-          TextField(
-            controller: row.receivedCtrl,
-            textAlign: TextAlign.center,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-            ],
-            decoration: _compactInput(),
-          ),
-          _colReceiveQty,
-        ),
+        _tableCell(_orderQtyCell(row), _colOrderQty),
+        _tableCell(_qtyField(row.receivedCtrl), _colReceiveQty),
         _tableCell(
           Center(
             child: Checkbox(
@@ -363,15 +643,10 @@ class _PurchaseOrderDetailPageState extends State<PurchaseOrderDetailPage> {
           _colBatch,
         ),
         _tableCell(
-          Text(
-            row.binText,
-            style: AppTextStyles.text(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          _warehouseCell(row),
           _colBin,
         ),
+        _tableCell(Center(child: _deleteCell(row)), _colDelete),
       ],
     );
   }
@@ -382,7 +657,8 @@ class _PurchaseOrderDetailPageState extends State<PurchaseOrderDetailPage> {
         _colReceiveQty +
         _colFree +
         _colBatch +
-        _colBin;
+        _colBin +
+        _colDelete;
 
     return Container(
       decoration: BoxDecoration(
@@ -403,6 +679,7 @@ class _PurchaseOrderDetailPageState extends State<PurchaseOrderDetailPage> {
               3: FixedColumnWidth(_colFree),
               4: FixedColumnWidth(_colBatch),
               5: FixedColumnWidth(_colBin),
+              6: FixedColumnWidth(_colDelete),
             },
             defaultVerticalAlignment: TableCellVerticalAlignment.middle,
             children: [
@@ -417,6 +694,7 @@ class _PurchaseOrderDetailPageState extends State<PurchaseOrderDetailPage> {
                   _tableHeaderCell('ฟรี', _colFree),
                   _tableHeaderCell('Batch / Lot No.', _colBatch),
                   _tableHeaderCell('คลัง / Bin Location', _colBin),
+                  _tableHeaderCell('ลบ', _colDelete),
                 ],
               ),
               for (final row in _lines) _lineTableRow(row),
@@ -495,7 +773,7 @@ class _PurchaseOrderDetailPageState extends State<PurchaseOrderDetailPage> {
                 child: _sectionTitle('รายการสินค้า (${_lines.length})'),
               ),
               OutlinedButton.icon(
-                onPressed: () {},
+                onPressed: _openAddProduct,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.accentGreen,
                   side: const BorderSide(color: AppColors.accentGreen),
@@ -508,6 +786,7 @@ class _PurchaseOrderDetailPageState extends State<PurchaseOrderDetailPage> {
               ),
             ],
           ),
+          const SizedBox(height: 14),
           if (_lines.isEmpty)
             Container(
               width: double.infinity,
@@ -517,7 +796,7 @@ class _PurchaseOrderDetailPageState extends State<PurchaseOrderDetailPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                'ยังไม่มีรายการสินค้า\n(รอ backend ส่ง lines[] มา)',
+                'ยังไม่มีรายการสินค้า',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.subtitle(),
               ),

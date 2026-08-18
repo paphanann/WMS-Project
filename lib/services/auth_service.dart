@@ -17,9 +17,14 @@ class AuthService {
       Uri.parse('$baseUrl/api/auth/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'username': user, 'password': password}),
-    );
+    ).timeout(const Duration(seconds: 15));
 
-    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    Map<String, dynamic> data;
+    try {
+      data = jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {
+      throw Exception('เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง (${res.statusCode})');
+    }
     if (res.statusCode != 200 || data['success'] != true) {
       throw Exception(data['message']?.toString() ?? 'เข้าสู่ระบบไม่สำเร็จ');
     }
@@ -51,6 +56,8 @@ class AuthService {
     await prefs.remove('sessionId');
     await prefs.remove('routeId');
     await prefs.remove('username');
+    await prefs.remove('warehouseCode');
+    await prefs.remove('warehouseName');
     await prefs.remove('warehouse');
     await prefs.remove('database');
   }

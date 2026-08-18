@@ -72,7 +72,7 @@ class PurchaseOrderCard extends StatelessWidget {
                   Text(order.dateText, style: AppTextStyles.caption()),
                   const Spacer(),
                   Text(
-                    '${order.totalQty.toStringAsFixed(0)} ชิ้น',
+                    order.totalQtyText,
                     style: AppTextStyles.text(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
